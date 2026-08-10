@@ -330,7 +330,7 @@
     <string name="choose_sim_card">Wybierz kartę SIM</string>
     <string name="conversation_is_secured">Rozmowa jest zabezpieczona</string>
     <string name="compose_new">Utwórz nowy</string>
-    <string name="compose">Komponować</string>
+    <string name="compose">Komponuj</string>
     <string name="notifications">Powiadomienia</string>
     <string name="block_report_spam"><![CDATA[Zablokuj i zgłoś spam]]></string>
     <string name="end_to_end_encryption">Szyfrowanie typu end-to-end</string>
