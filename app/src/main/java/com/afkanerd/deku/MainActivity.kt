@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -16,10 +15,12 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
@@ -37,18 +38,18 @@ import com.afkanerd.deku.RemoteListeners.RemoteListenerConnectionService
 import com.afkanerd.deku.RemoteListeners.ui.RMQAddComposable
 import com.afkanerd.deku.RemoteListeners.ui.RMQMainComposable
 import com.afkanerd.deku.RemoteListeners.ui.RMQQueuesComposable
-import com.afkanerd.deku.Router.ui.GatewayClientsMainView
-import com.afkanerd.deku.Router.ui.RoutedMessagesMainView
-import com.afkanerd.deku.Router.ui.viewModels.GatewayServerViewModel
+import com.afkanerd.deku.Forwarder.ui.GatewayClientsMainView
+import com.afkanerd.deku.Forwarder.ui.GatewayClientsSettingsView
+import com.afkanerd.deku.Forwarder.ui.RoutedMessagesMainView
+import com.afkanerd.deku.Forwarder.ui.viewModels.GatewayServerViewModel
 import com.afkanerd.lib_smsmms_android.R
 import com.afkanerd.smswithoutborders_libsmsmms.extensions.context.NEW_NOTIFICATION_ACTION
-import com.afkanerd.smswithoutborders_libsmsmms.extensions.context.getDatabase
 import com.afkanerd.smswithoutborders_libsmsmms.extensions.context.isDefault
 import com.afkanerd.smswithoutborders_libsmsmms.extensions.context.makeE16PhoneNumber
-import com.afkanerd.smswithoutborders_libsmsmms.extensions.context.setNativesLoaded
 import com.afkanerd.smswithoutborders_libsmsmms.extensions.context.settingsGetTheme
 import com.afkanerd.smswithoutborders_libsmsmms.ui.components.NavHostControllerInstance
 import com.afkanerd.smswithoutborders_libsmsmms.ui.navigation.ConversationsScreenNav
+import com.afkanerd.smswithoutborders_libsmsmms.ui.viewModels.ConversationsViewModel
 import com.afkanerd.smswithoutborders_libsmsmms.ui.viewModels.SearchViewModel
 import com.afkanerd.smswithoutborders_libsmsmms.ui.viewModels.ThreadsViewModel
 import com.example.compose.AppTheme
@@ -61,6 +62,7 @@ class MainActivity : AppCompatActivity(){
 
     private lateinit var navController: NavHostController
     private val threadsViewModel: ThreadsViewModel by viewModels()
+    private val conversationViewModel: ConversationsViewModel by viewModels()
     private val secureViewModel: SecureConversationViewModel by viewModels()
     private val gatewayServerViewModel: GatewayServerViewModel by viewModels()
     private val searchViewModel: SearchViewModel by viewModels()
@@ -77,6 +79,8 @@ class MainActivity : AppCompatActivity(){
             window.isNavigationBarContrastEnforced = false
         }
 
+        threadsViewModel.setIsDefault(isDefault())
+
         remoteListenersViewModel = RemoteListenersViewModel(applicationContext)
 
         lifecycleScope.launch(Dispatchers.Main) {
@@ -90,8 +94,8 @@ class MainActivity : AppCompatActivity(){
                                 Surface(Modifier
                                     .fillMaxSize()
                                 ) {
+                                    val isDefault by threadsViewModel.isDefault.collectAsStateWithLifecycle()
                                     NavHostControllerInstance(
-                                        newLayoutInfo = newLayoutInfo,
                                         navController = navController,
                                         threadsViewModel = threadsViewModel,
                                         searchViewModel = searchViewModel,
@@ -99,7 +103,7 @@ class MainActivity : AppCompatActivity(){
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
-                                                        text= stringResource(R.string.homepage_menu_routed),
+                                                        text = stringResource(R.string.homepage_menu_routed),
                                                         color = MaterialTheme.colorScheme.onBackground
                                                     )
                                                 },
@@ -112,7 +116,7 @@ class MainActivity : AppCompatActivity(){
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
-                                                        text= stringResource(R.string.remote_listeners),
+                                                        text = stringResource(R.string.remote_listeners),
                                                         color = MaterialTheme.colorScheme.onBackground
                                                     )
                                                 },
@@ -125,7 +129,7 @@ class MainActivity : AppCompatActivity(){
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
-                                                        text= stringResource(R.string.about_deku),
+                                                        text = stringResource(R.string.about_deku),
                                                         color = MaterialTheme.colorScheme.onBackground
                                                     )
                                                 },
@@ -139,7 +143,7 @@ class MainActivity : AppCompatActivity(){
                                             DropdownMenuItem(
                                                 text = {
                                                     Text(
-                                                        text= stringResource(com.afkanerd.deku.DefaultSMS.R.string.secure),
+                                                        text = stringResource(com.afkanerd.deku.DefaultSMS.R.string.secure),
                                                         color = MaterialTheme.colorScheme.onBackground
                                                     )
                                                 },
@@ -152,11 +156,15 @@ class MainActivity : AppCompatActivity(){
                                         conversationsCustomViewModel = secureViewModel, //This can be an array
                                         conversationsCustomComposable = { vm ->
                                             SecureConversationComposable(
-                                                vm as SecureConversationViewModel)
+                                                vm as SecureConversationViewModel
+                                            )
                                         },
-                                        conversationsCustomDataView = { 
+                                        conversationsCustomDataView = {
                                             KeyExchangeType(it)
-                                        }
+                                        },
+                                        conversationsViewModel = conversationViewModel,
+                                        isDefault = isDefault,
+                                        appName = stringResource(R.string.app_name)
                                     ) {
                                         composable<RemoteListenersQueuesScreen> {
                                             RMQQueuesComposable(
@@ -187,6 +195,12 @@ class MainActivity : AppCompatActivity(){
                                             RoutedMessagesMainView(
                                                 navController,
                                                 gatewayServerViewModel,
+                                            )
+                                        }
+                                        composable<GatewayClientsSettingsScreen> {
+                                            GatewayClientsSettingsView(
+                                                navController,
+                                                gatewayServerViewModel
                                             )
                                         }
                                         composable<AboutScreen> {
